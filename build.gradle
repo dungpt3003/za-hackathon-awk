@@ -1,5 +1,5 @@
 group 'zalo'
-version '1.0-SNAPSHOT'
+version '1.0'
 
 apply plugin: 'java'
 
@@ -8,6 +8,21 @@ sourceCompatibility = 1.8
 repositories {
     mavenCentral()
 }
+
+task compileMain(type: Jar) {
+    zip64 true
+    manifest {
+        attributes 'Implementation-Title': 'Analyze community',
+                'Implementation-Version': version,
+                'Main-Class': 'com.zalo.hackathon.WebhookMain'
+    }
+
+    baseName = "za-hackathon"
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    with jar
+}
+
 
 dependencies {
     compile fileTree(dir: 'libs', include: '*.jar')

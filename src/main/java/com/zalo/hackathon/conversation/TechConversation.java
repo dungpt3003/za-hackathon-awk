@@ -17,6 +17,7 @@ import com.zalo.hackathon.dao.ProductSingleton;
 import com.zalo.hackathon.detector.Entity;
 import com.zalo.hackathon.detector.EntityDetector;
 import com.zalo.hackathon.detector.EntityType;
+import com.zalo.hackathon.detector.SentimentDetector;
 import com.zalo.hackathon.message.InAppMessage;
 import com.zalo.hackathon.model.ProductInfo;
 import com.zalo.hackathon.utils.LogCenter;
@@ -57,6 +58,10 @@ public class TechConversation {
     private static final String SHOW_MORE_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/More_Icon_C.svg/500px-More_Icon_C.svg.png";
 
     private static final String SORRY_MESSAGE = "Xin lỗi bạn, Minibot đang trong quá trình xây dựng nên vẫn còn lỗi, chưa thể trả lời được bạn câu hỏi này, Mong bạn thông cảm :(";
+
+    private static final String POSITIVE_FEEDBACK = "Shop rất vinh hạnh được phục vụ bạn, bạn có nhu cầu gì nữa thì cứ hỏi shop nhé!";
+
+    private static final String NEGATIVE_FEEDBACK = "Xin lỗi đã làm bạn phiền lòng, shop sẽ ghi nhận đánh giá của bạn để cải thiện chất lượng dịch vụ!";
 
     public static int SHOW_MORE_BATCH = 3;
     private static Logger LOG = LogManager.getLogger(TechConversation.class);
@@ -266,7 +271,22 @@ public class TechConversation {
             return;
         }
 
-        oaClient.sendTextMessage(userId, SORRY_MESSAGE);
+        int check = 0;
+
+        try {
+            int sentiment = SentimentDetector.getInstance().detectSentiment(message);
+            check = Math.abs(sentiment);
+
+            if (sentiment == 1)
+                oaClient.sendTextMessage(userId, POSITIVE_FEEDBACK);
+
+            if (sentiment == -1)
+                oaClient.sendTextMessage(userId, NEGATIVE_FEEDBACK);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (check == 0)
+            oaClient.sendTextMessage(userId, SORRY_MESSAGE);
         resetState();
     }
 

@@ -8,10 +8,18 @@ import vnu.uet.vietsentiwordnet.objects.SentenceLevel;
 import java.io.IOException;
 
 public class SentimentDetector {
-    private SentenceLevel sl;
+    private static SentenceLevel sl;
+    private static SentimentDetector instance;
+    private SentimentDetector() {
+        sl = OpinionFinder.getInstance().loadModels();
+    }
 
-    public SentimentDetector() {
-        this.sl = OpinionFinder.getInstance().loadModels();
+    public static SentimentDetector getInstance() {
+        if (instance == null) {
+            instance = new SentimentDetector();
+        }
+
+        return instance;
     }
 
     public int detectSentiment(String sentence) {

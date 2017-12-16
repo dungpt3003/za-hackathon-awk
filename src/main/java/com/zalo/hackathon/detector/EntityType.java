@@ -17,5 +17,9 @@ public enum EntityType {
     sac_dtdd,
     tai_nghe,
     TABLET,
-    FULL_TECH_ITEM
+    FULL_TECH_ITEM,
+    OP_LUNG,
+    CAP_DIEN_THOAI,
+    SAC_PIN,
+    PRICE
 }

@@ -3,6 +3,7 @@ package com.zalo.hackathon.conversation;
 import com.zalo.hackathon.detector.Entity;
 import com.zalo.hackathon.detector.EntityDetector;
 import com.zalo.hackathon.detector.EntityType;
+import com.zalo.hackathon.utils.ZaStringUtils;
 
 import java.util.*;
 
@@ -43,6 +44,13 @@ public class IntentDetector {
             "thích sản phẩm này",
     };
 
+    private static final String KEYWORD_XIN_CHAO[] = new String[]{
+            "hello",
+            "xin chào",
+            "hi",
+            "hey",
+    };
+
     public static Set<Intent> detect(String message, Map<EntityType, List<Entity>> entities) {
         Set<Intent> intents = new HashSet<>();
         for (Intent intent : Intent.values()) {
@@ -71,10 +79,18 @@ public class IntentDetector {
                         check = true;
                     }
                     break;
+
+                case XIN_CHAO:
+                    check = checkIntent(KEYWORD_XIN_CHAO, message);
+                    break;
             }
 
             if (check) {
                 intents.add(intent);
+            }
+
+            if (entities.containsKey(EntityType.PRICE)) {
+                intents.add(Intent.ASK_PRICE);
             }
         }
 
@@ -82,8 +98,9 @@ public class IntentDetector {
     }
 
     public static boolean checkIntent(String[] keywords, String message) {
+        String mMessage = ZaStringUtils.normalize(message);
         for (String keyword : keywords) {
-            if (message.contains(keyword)) {
+            if (mMessage.contains(ZaStringUtils.normalize(keyword))) {
                 return true;
             }
         }

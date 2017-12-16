@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import com.zalo.hackathon.utils.LogCenter;
 import com.zalo.hackathon.utils.ZaStringUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,7 +25,11 @@ public class EntityDetector {
             "lg",
             "xiaomi",
             "phillips",
-            "sandisk"
+            "sandisk",
+            "iphone",
+            "galaxy",
+            "xperia",
+            "vivo"
     ));
 
     private static Set<String> DIEN_THOAI;
@@ -32,6 +37,17 @@ public class EntityDetector {
     private static Set<String> TABLET;
 
     private static Set<String> PHU_KIEN;
+
+    private static Set<String> OP_LUNG = new HashSet<>(Arrays.asList(
+            "ốp lưng",
+            "ốp"
+    ));
+
+    private static Set<String> SAC = new HashSet<>(Arrays.asList(
+            "sạc dự phòng",
+            "pin",
+            "sạc"
+    ));
 
     private static Set<String> OPERATION = new HashSet<>(Arrays.asList(
             "android",
@@ -97,6 +113,60 @@ public class EntityDetector {
 
     }
 
+    public static int convertToNumber(String word) {
+        if (NumberUtils.isNumber(word)) {
+            return NumberUtils.toInt(word);
+        }
+
+        switch (ZaStringUtils.normalize(word)) {
+            case "mot":
+                return 1;
+            case "hai":
+                return 2;
+            case "ba":
+                return 3;
+            case "bon":
+                return 4;
+            case "nam":
+                return 5;
+            case "sau":
+                return 6;
+            case "bay":
+                return 7;
+            case "tam":
+                return 8;
+            case "chin":
+                return 9;
+        }
+
+        return -1;
+    }
+
+    public List<Entity> detectByKeywords(String message, Set<String> keywords, EntityType entityType) {
+        String temp = ZaStringUtils.normalize(message);
+        List<Entity> entities = new ArrayList<>();
+        for (String keyword : keywords) {
+            if (temp.contains(ZaStringUtils.normalize(keyword))) {
+                entities.add(new Entity(keyword.toLowerCase(), entityType));
+            }
+        }
+
+        return entities;
+    }
+
+    public List<Entity> detectBrands(String message) {
+        String temp = ZaStringUtils.normalize(message);
+
+        List<Entity> entities = new ArrayList<>();
+        for (String brandName : BRANDS) {
+            if (temp.contains(brandName)) {
+                entities.add(new Entity(brandName, EntityType.BRANDS));
+            }
+        }
+
+        return entities;
+    }
+
     public Map<EntityType, List<Entity>> detect(String message) {
         Map<EntityType, List<Entity>> result = new HashMap<>();
 
@@ -141,31 +211,55 @@ public class EntityDetector {
                     }
 
                     break;
+                case OP_LUNG:
+                    List<Entity> opLung = detectByKeywords(message, OP_LUNG, EntityType.OP_LUNG);
+                    if (opLung.size() > 0) {
+                        result.put(type, opLung);
+                    }
+                    break;
+
+                case SAC_PIN:
+                    List<Entity> sac = detectByKeywords(message, SAC, EntityType.SAC_PIN);
+                    if (sac.size() > 0) {
+                        result.put(type, sac);
+                    }
+                    break;
+
+                case PRICE:
+                    List<Entity> price = detectPrice(message);
+                    if (price.size() > 0) {
+                        result.put(type, price);
+                    }
+                    break;
             }
         }
 
         return result;
     }
 
-    public List<Entity> detectByKeywords(String message, Set<String> keywords, EntityType entityType) {
-        String temp = ZaStringUtils.normalize(message);
+    public List<Entity> detectPrice(String message) {
+        String nMessage = ZaStringUtils.normalize(message);
+
+        String words[] = nMessage.split(" ");
+
         List<Entity> entities = new ArrayList<>();
-        for (String keyword : keywords) {
-            if (temp.contains(ZaStringUtils.normalize(keyword))) {
-                entities.add(new Entity(keyword.toLowerCase(), entityType));
+        for (int i = 0; i < words.length; i++) {
+            if (words[i].equals("trieu")) {
+                int detectValue = convertToNumber(words[i]);
+                if (detectValue == -1) {
+                    continue;
+                }
+
+                entities.add(new Entity(String.valueOf(detectValue * 1000000), EntityType.PRICE));
             }
-        }
 
-        return entities;
-    }
+            if (words[i].startsWith("tram")) {
+                int detectValue = convertToNumber(words[i]);
+                if (detectValue == -1) {
+                    continue;
+                }
 
-    public List<Entity> detectBrands(String message) {
-        String temp = ZaStringUtils.normalize(message);
-
-        List<Entity> entities = new ArrayList<>();
-        for (String brandName : BRANDS) {
-            if (temp.contains(brandName)) {
-                entities.add(new Entity(brandName, EntityType.BRANDS));
+                entities.add(new Entity(String.valueOf(detectValue * 100000), EntityType.PRICE));
             }
         }
 

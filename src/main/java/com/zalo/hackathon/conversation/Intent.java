@@ -12,4 +12,5 @@ public enum Intent {
     FIND_ITEM,
     ASK_FULL_TECH,
     BUY,
+    XIN_CHAO
 }

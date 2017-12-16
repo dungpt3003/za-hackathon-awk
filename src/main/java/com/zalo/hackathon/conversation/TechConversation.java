@@ -21,7 +21,6 @@ import com.zalo.hackathon.model.ProductInfo;
 import com.zalo.hackathon.utils.LogCenter;
 import com.zalo.hackathon.utils.MapUtils;
 import com.zalo.hackathon.utils.ZaStringUtils;
-import okhttp3.OkHttpClient;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,6 +47,7 @@ public class TechConversation {
     public static final String SAC_DIEN_THOAI = "sac dtdd";
     public static final String TAI_NGHE = "tai nghe";
     public static final String MAY_TINH_BANG = "may tinh bang";
+
     public static final String SHOW_MORE_COMMAND = "#Xem thêm sản phẩm";
     private static final String SHOW_MORE_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/More_Icon_C.svg/500px-More_Icon_C.svg.png";
 
@@ -60,8 +60,7 @@ public class TechConversation {
     private ZaloOaClient oaClient;
 
     private User user;
-    private OkHttpClient client;
-    private State currentState;
+    private State currentState = State.STATE_INIT;
 
 
     private ProductInfo currentProduct;
@@ -74,10 +73,20 @@ public class TechConversation {
     public TechConversation(long userId, ZaloOaClient oaClient) throws APIException, UnknownHostException {
         this.userId = userId;
         this.oaClient = oaClient;
-        this.client = new OkHttpClient();
 
         user = getProfile(userId);
         elasticDao = new BaseElasticDao(new ElasticSearchConfig(Config.ELASTIC_HOST, Config.ELASTIC_PORT, Config.ELASTIC_CLUSTER_NAME));
+    }
+
+    public static void main(String args[]) throws Exception {
+        ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
+
+        long userid = 496955364891361767L; // user id;
+
+        TechConversation conversation = new TechConversation(userid, client);
+
+        conversation.processRawMessage("Xin chào");
+
     }
 
     private User getProfile(long id) throws APIException {
@@ -100,38 +109,10 @@ public class TechConversation {
         return new User(name, byear, bday, bmonth, id, gender);
     }
 
-    public String receiveMessage(UserMessage message) {
-        try {
-            switch (message.getEvent()) {
-                case "sendmsg":
-                    processRawMessage(message.getMessage());
-                    break;
-            }
-
-
-        } catch (APIException e) {
-            LogCenter.exception(LOG, e);
-            try {
-                oaClient.sendTextMessage(userId, "Xin lỗi bạn " + user.getDisplayName() + ", Minibot đang trong quá trình xây dựng nên vẫn còn lỗi, chưa thể trả lời được bạn câu hỏi này, Mong bạn thông cảm :(");
-            } catch (Exception e2) {
-                LogCenter.exception(LOG, e);
-            }
-        }
-        return "OK";
+    private void processNewUser(UserMessage message) throws APIException {
+        oaClient.sendTextMessage(userId, "Xin chào mừng bạn " + user.getDisplayName() + " đến với Ủn Ỉn Shop, mình có thể giúp gì được cho bạn ?");
     }
 
-    public static void main(String args[]) throws Exception {
-        ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
-
-        long userid = 2540080485971043358L; // user id;
-
-        TechConversation conversation = new TechConversation(userid, client);
-
-        conversation.processRawMessage("Tôi muốn tìm điện thoại samsung");
-        conversation.processRawMessage("Cho mình xem thông số sản phẩm số 2");
-        conversation.processRawMessage("Con này dùng hệ điều hành gì nhỉ ?");
-
-    }
 
     public Map<String, String> parseToMap(String json) {
         Type type = new TypeToken<Map<String, String>>() {
@@ -153,6 +134,30 @@ public class TechConversation {
         }
     }
 
+    public String receiveMessage(UserMessage message) {
+        try {
+            switch (message.getEvent()) {
+                case "acceptinvite":
+                    processNewUser(message);
+                    break;
+
+                case "sendmsg":
+                    processRawMessage(message.getMessage());
+                    break;
+            }
+
+
+        } catch (APIException e) {
+            LogCenter.exception(LOG, e);
+            try {
+                oaClient.sendTextMessage(userId, "Xin lỗi bạn " + user.getDisplayName() + ", Minibot đang trong quá trình xây dựng nên vẫn còn lỗi, chưa thể trả lời được bạn câu hỏi này, Mong bạn thông cảm :(");
+            } catch (Exception e2) {
+                LogCenter.exception(LOG, e);
+            }
+        }
+        return "OK";
+    }
+
     public void processRawMessage(String message) throws APIException {
         LogCenter.info(LOG, "Process raw message: " + message);
         Map<EntityType, List<Entity>> entities = EntityDetector.getInstance().detect(message);
@@ -163,6 +168,10 @@ public class TechConversation {
             return;
         }
 
+        if (intents.contains(Intent.ASK_PRICE)) {
+            askPrice(entities, intents);
+            return;
+        }
         if (intents.contains(Intent.ASK_DETAIL)) {
             askDetail(entities, intents);
             return;
@@ -183,8 +192,14 @@ public class TechConversation {
             return;
         }
 
+        if (intents.contains(Intent.XIN_CHAO)) {
+            oaClient.sendTextMessage(userId, "Ủn ỉn shop xin chào bạn " + user.getDisplayName() + ", mình có thể giúp gì cho bạn :) ?");
+            return;
+        }
+
         oaClient.sendTextMessage(userId, SORRY_MESSAGE);
     }
+
 
     public void askFullTech(Map<EntityType, List<Entity>> entities, Set<Intent> intents) throws APIException {
         currentState = State.STATE_ASK_DETAIL;
@@ -261,10 +276,9 @@ public class TechConversation {
         oaClient.sendTextMessage(userId, "Xin lỗi bạn, mình nghĩ bạn đang định hỏi gì đó nhưng mình chưa hiểu lắm, bạn có thể nói rõ hơn được không ?");
     }
 
-    public void findItem(Map<EntityType, List<Entity>> entities, Set<Intent> intent) throws APIException {
+    public void askPrice(Map<EntityType, List<Entity>> entities, Set<Intent> intents) throws APIException {
         oaClient.sendTextMessage(userId, "Hệ thống đang tìm sản phẩm, bạn " + user.getDisplayName() + " đợi tí nhé :) ");
 
-        LogCenter.info(LOG, "Detect intent: " + intent);
         LogCenter.info(LOG, "Detect entities: " + entities);
 
         StringBuilder keyword = new StringBuilder();
@@ -285,9 +299,26 @@ public class TechConversation {
             boolQuery = boolQuery.must(QueryBuilders.termQuery("category", DIEN_THOAI));
         } else if (mainType == EntityType.PHU_KIEN) {
             boolQuery = boolQuery.must(QueryBuilders.termQuery("category", PHU_KIEN));
+        } else if (mainType == EntityType.OP_LUNG) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", OPLUNG));
+        } else if (mainType == EntityType.SAC_PIN) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", SAC_DIEN_THOAI));
+        }
+
+        if (!entities.containsKey(EntityType.PRICE)) {
+            oaClient.sendTextMessage(userId, "Xin lỗi bạn, minishop đoán bạn muốn hỏi shop gì đó nhưng shop không nhận diện được, xin lỗi bạn nhé.");
+        }
+
+        int price = Integer.parseInt(entities.get(EntityType.PRICE).get(0).getValue());
+
+        if (entities.get(EntityType.PRICE).size() == 2) {
+            Entity price1 = entities.get(EntityType.PRICE).get(0);
+            Entity price2 = entities.get(EntityType.PRICE).get(0);
+
         }
 
         boolQuery = boolQuery.must(QueryBuilders.queryStringQuery(keyword.toString())).must(QueryBuilders.queryStringQuery(keyword.toString()));
+        QueryBuilders.rangeQuery("price").from(0).to(price);
         LogCenter.info(LOG, boolQuery.toString());
         SearchResponse response = elasticDao.query(boolQuery, Config.INDEX, 100);
         Map<Map<String, Object>, Float> results = convertSearchResponse(response);
@@ -297,7 +328,7 @@ public class TechConversation {
         for (Map<String, Object> result : results.keySet()) {
             System.out.println(result.get("productId") + " " + result.get("name") + " " + results.get(result) + "  " + result.get("imgUrl"));
             String id = result.get("productId").toString();
-            String productUrl = result.get("imgUrl").toString();
+            String productUrl = result.get("productDetailLink").toString();
             String imgUrl = result.get("imgUrl").toString();
             String title = result.get("name").toString();
             String desc = result.get("price").toString();
@@ -322,15 +353,59 @@ public class TechConversation {
         return bool.minimumShouldMatch(value.split(" ").length);
     }
 
-    private InAppMessage getInAppMessage(ProductInfo productInfo) {
-        InAppMessage productMessage = new InAppMessage();
-        productMessage.setUrl(productInfo.getUrl());
-        productMessage.setDescription(productInfo.getDesc());
-        productMessage.setPopup(popUp());
-        productMessage.setThumb(productInfo.getImageUrl());
-        productMessage.setTitle(productInfo.getTitle() + " - " + productInfo.getPrice());
+    public void findItem(Map<EntityType, List<Entity>> entities, Set<Intent> intents) throws APIException {
+        oaClient.sendTextMessage(userId, "Hệ thống đang tìm sản phẩm, bạn " + user.getDisplayName() + " đợi tí nhé :) ");
 
-        return productMessage;
+        LogCenter.info(LOG, "Detect intent: " + intents);
+        LogCenter.info(LOG, "Detect entities: " + entities);
+
+        StringBuilder keyword = new StringBuilder();
+        EntityType mainType = detectMainEntity(entities);
+        for (EntityType type : entities.keySet()) {
+            if (type == EntityType.DIEN_THOAI) {
+                continue;
+            }
+
+            for (Entity entity : entities.get(type)) {
+                keyword.append(entity.getValue()).append(" ");
+            }
+        }
+
+        LogCenter.info(LOG, "Keyword: " + keyword);
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        if (mainType == EntityType.DIEN_THOAI) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", DIEN_THOAI));
+        } else if (mainType == EntityType.PHU_KIEN) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", PHU_KIEN));
+        } else if (mainType == EntityType.OP_LUNG) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", OPLUNG));
+        } else if (mainType == EntityType.SAC_PIN) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", SAC_DIEN_THOAI));
+        }
+
+        boolQuery = boolQuery.must(QueryBuilders.queryStringQuery(keyword.toString())).must(QueryBuilders.queryStringQuery(keyword.toString()));
+        LogCenter.info(LOG, boolQuery.toString());
+        SearchResponse response = elasticDao.query(boolQuery, Config.INDEX, 100);
+        Map<Map<String, Object>, Float> results = convertSearchResponse(response);
+        results = MapUtils.sortByValue(results, false);
+
+        cachedProducts = new ArrayList<>();
+        for (Map<String, Object> result : results.keySet()) {
+            System.out.println(result.get("productId") + " " + result.get("name") + " " + results.get(result) + "  " + result.get("imgUrl"));
+            String id = result.get("productId").toString();
+            String productUrl = result.get("productDetailLink").toString();
+            String imgUrl = result.get("imgUrl").toString();
+            String title = result.get("name").toString();
+            String desc = result.get("price").toString();
+            String price = result.get("price").toString();
+            cachedProducts.add(new ProductInfo(id, productUrl, imgUrl, title, desc, price));
+        }
+
+        LogCenter.info(LOG, "Cache " + cachedProducts.size() + " products");
+
+        currentIndexProduct = SHOW_MORE_BATCH;
+        currentShowProducts = cachedProducts.subList(0, SHOW_MORE_BATCH);
+        sendProduct(currentShowProducts);
     }
 
     private QueryHideAction getShowMoreMessage() {
@@ -379,28 +454,15 @@ public class TechConversation {
         return resps;
     }
 
-    public EntityType detectMainEntity(Map<EntityType, List<Entity>> map) {
-        List<EntityType> keys = map.keySet().stream().filter(x -> map.getOrDefault(x, new ArrayList<>()).size() > 0).collect(Collectors.toList());
-        if (keys.size() == 1) {
-            return keys.get(0);
-        }
+    private InAppMessage getInAppMessage(ProductInfo productInfo) {
+        InAppMessage productMessage = new InAppMessage();
+        productMessage.setUrl(productInfo.getUrl());
+        productMessage.setDescription(productInfo.getDesc());
+        productMessage.setPopup(popUp());
+        productMessage.setThumb(productInfo.getImageUrl());
+        productMessage.setTitle(productInfo.getTitle() + " - " + productInfo.getPrice() + "đ");
 
-        boolean checkHasPhone = map.getOrDefault(EntityType.DIEN_THOAI, new ArrayList<>()).size() > 0;
-        boolean checkHasPhuKien = map.getOrDefault(EntityType.PHU_KIEN, new ArrayList<>()).size() > 0;
-
-        if (checkHasPhone && checkHasPhuKien) {
-            return EntityType.PHU_KIEN;
-        }
-
-        if (checkHasPhone) {
-            return EntityType.DIEN_THOAI;
-        }
-
-        if (checkHasPhuKien) {
-            return EntityType.PHU_KIEN;
-        }
-
-        return null;
+        return productMessage;
     }
 
     private class QueryShowFix extends QueryShowAction {
@@ -411,10 +473,42 @@ public class TechConversation {
         String action = "oa.query.hide";
     }
 
+    public EntityType detectMainEntity(Map<EntityType, List<Entity>> map) {
+        List<EntityType> keys = map.keySet().stream().filter(x -> map.getOrDefault(x, new ArrayList<>()).size() > 0).collect(Collectors.toList());
+        if (keys.size() == 1) {
+            return keys.get(0);
+        }
+
+        boolean checkHasPhone = map.getOrDefault(EntityType.DIEN_THOAI, new ArrayList<>()).size() > 0;
+        boolean checkHasPhuKien = map.getOrDefault(EntityType.PHU_KIEN, new ArrayList<>()).size() > 0;
+        boolean checkHasOpLung = map.getOrDefault(EntityType.OP_LUNG, new ArrayList<>()).size() > 0;
+        boolean chechHasSac = map.getOrDefault(EntityType.SAC_PIN, new ArrayList<>()).size() > 0;
+
+        if (checkHasOpLung) {
+            return EntityType.OP_LUNG;
+        }
+
+        if (chechHasSac) {
+            return EntityType.SAC_PIN;
+        }
+
+        if (checkHasPhuKien) {
+            return EntityType.PHU_KIEN;
+        }
+
+        if (checkHasPhone) {
+            return EntityType.DIEN_THOAI;
+        }
+
+        return null;
+    }
+
     private enum State {
         START_FIND,
         SEE_MORE_ITEM,
         STATE_ASK_DETAIL,
+        STATE_INIT,
     }
+
 
 }

@@ -1,9 +1,13 @@
 package com.zalo.hackathon.controller;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.vng.zalo.sdk.APIException;
+import com.vng.zalo.sdk.oa.ZaloOaClient;
+import com.vng.zalo.sdk.oa.ZaloOaInfo;
+import com.zalo.hackathon.Config;
+import com.zalo.hackathon.conversation.ShopConversation;
 import com.zalo.hackathon.utils.LogCenter;
-import okhttp3.*;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
@@ -11,24 +15,32 @@ import org.json.JSONObject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.QueryParam;
-import java.util.Arrays;
+import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.Map;
 
 @Path("/")
 public class HackathonController {
     private static Logger LOG = LogManager.getLogger(HackathonController.class);
-    private OkHttpClient client = new OkHttpClient();
+    private static Map<Long, ShopConversation> currentConversations;
+    private ZaloOaClient oaClient;
 
-    private static final String URL_POST_IMAGE = "http://45.124.94.45:8080/predict";
-    private static MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+    public HackathonController() {
+        oaClient = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
 
-//    public HackathonController() {
-//        client = new OkHttpClient();
-//    }
+        if (currentConversations == null) {
+            currentConversations = new HashMap<>();
+        }
+    }
 
     @Path("/test")
     @GET
     public String test() {
         return "Success";
+    }
+
+    public static void main(String args[]) throws APIException {
+        System.out.println(new HackathonController().processMessage(2540080485971043358L, "http://f9.photo.talk.zdn.vn/1003357158712287280/ef6f04ea668a89d4d09b.jpg"));
     }
 
     @GET
@@ -44,52 +56,47 @@ public class HackathonController {
                         @QueryParam("timestamp") String timestamp,
                         @QueryParam("mac") String mac) {
 
-        LogCenter.info(LOG, "Receive " + message);
-        return message;
-//        switch (event) {
-//            case "sendimagemsg":
-//                LogCenter.info(LOG, "Receive image message: " + href);
-//                JSONObject result = processSendImage(href);
-//
-//                if (result.getBoolean("error")) {
-//                    return "Sorry, Mình không thể nhận diện ảnh này";
-//                } else {
-//                    return result.getString("message");
-//                }
-//        }
-//
-//        return "Hello World";
-    }
+        UserMessage msg = new UserMessage(
+                event,
+                Long.parseLong(oaid),
+                Long.parseLong(fromuid),
+                NumberUtils.toLong(appid, -1),
+                msgid,
+                message,
+                href,
+                thumb,
+                Long.parseLong(timestamp),
+                mac
+        );
 
-    private JSONObject processSendImage(String href) {
-        JSONObject object = new JSONObject()
-                .put("service", "clothing")
-                .put("data", Arrays.asList(href))
-                .put("parameters", new JSONObject()
-                        .put("output",
-                                new JSONObject().put("best", 5))
-                );
+        LogCenter.info(LOG, "Receive message: " + msg);
 
-        Request request = new Request.Builder()
-                .url(URL_POST_IMAGE)
-                .post(RequestBody.create(JSON, object.toString()))
-                .build();
+        if (currentConversations.containsKey(msg.getFromuid())) {
+            LogCenter.info(LOG, "Conversation of user " + fromuid + "existed");
+            currentConversations.get(msg.getFromuid()).receiveMessage(msg);
+        } else {
+            try {
+                LogCenter.info(LOG, "Conversation of user " + fromuid + " is not existed, create new conversation");
+                ShopConversation conversation = new ShopConversation(msg.getFromuid(), oaClient);
+                currentConversations.put(msg.getFromuid(), conversation);
+                conversation.receiveMessage(msg);
+            } catch (APIException e) {
+                LogCenter.exception(LOG, e);
+                LogCenter.info(LOG, "Can not create conversation of user " + fromuid);
+            } catch (UnknownHostException e) {
+                LogCenter.exception(LOG, e);
+            }
 
-        try {
-            Response response = client.newCall(request).execute();
-            String body = response.body().string();
-
-            return new JSONObject().put("error", false).put("message", body);
-        } catch (Exception e) {
-            return new JSONObject().put("error", true).put("message", e.getMessage());
         }
+
+        return new JSONObject().put("error", "false").toString();
     }
 
-    public static void main(String args[]) {
-        HackathonController controller = new HackathonController();
-        JSONObject result = controller.processSendImage("http://maysonghanh.com/wp-content/uploads/sites/820/2017/03/áo-phông-cổ-dệt-màu-xanh-bích.jpg");
+    private String processMessage(long userId, String message) throws APIException {
+        JsonObject profile = oaClient.getProfile(userId);
 
-        System.out.println(result);
+        String userName = profile.getAsJsonObject("data").get("displayName").getAsString();
+        oaClient.sendTextMessage(userId, "Xin chào " + userName);
+        return "OK";
     }
-
 }

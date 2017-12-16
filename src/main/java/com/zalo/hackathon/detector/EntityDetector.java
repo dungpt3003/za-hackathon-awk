@@ -272,6 +272,10 @@ public class EntityDetector {
         String normalize = ZaStringUtils.normalize(message);
 
         List<Entity> entities = new ArrayList<>();
+        if (normalize.contains("cai nay") || normalize.contains("san pham nay")) {
+            entities.add(new Entity("0", EntityType.CURRENT_PRODUCT));
+        }
+
         if (normalize.contains("dau tien") || normalize.contains("thu nhat") || normalize.contains("thu 1")) {
             entities.add(new Entity("1", EntityType.ORDER));
         } else if (normalize.contains("thu hai") || normalize.contains("thu 2") || normalize.contains("giua")) {

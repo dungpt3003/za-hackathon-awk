@@ -13,6 +13,7 @@ import com.zalo.hackathon.Config;
 import com.zalo.hackathon.controller.UserMessage;
 import com.zalo.hackathon.dao.BaseElasticDao;
 import com.zalo.hackathon.dao.ElasticSearchConfig;
+import com.zalo.hackathon.dao.ProductSingleton;
 import com.zalo.hackathon.detector.Entity;
 import com.zalo.hackathon.detector.EntityDetector;
 import com.zalo.hackathon.detector.EntityType;
@@ -29,6 +30,8 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
 import org.elasticsearch.search.SearchHit;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.lang.reflect.Type;
 import java.net.UnknownHostException;
@@ -152,7 +155,17 @@ public class TechConversation {
         return "OK";
     }
 
-    public void processOrder(String order) {
+    public static void main(String args[]) throws Exception {
+        ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
+
+        long userid = 496955364891361767L; // user id;
+
+        TechConversation conversation = new TechConversation(userid, client);
+
+//        conversation.processRawMessage("Mình muốn tìm điện thoại giá từ 1 triệu đến 5 triệu");
+        conversation.processOrder("{\n" +
+                "  \"productId\":\"a9a60d7b2a3ec3609a2f\"\n" +
+                "}");
 
     }
 
@@ -274,15 +287,39 @@ public class TechConversation {
         oaClient.sendTextMessage(userId, "Xin lỗi bạn, mình nghĩ bạn đang định hỏi gì đó nhưng mình chưa hiểu lắm, bạn có thể nói rõ hơn được không ?");
     }
 
-    public static void main(String args[]) throws Exception {
-        ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
+    public void processOrder(String order) throws APIException {
+        LogCenter.info(LOG, "Receive order " + order);
+        String productId = new JSONObject(order).getString("productId");
+        String code = ProductSingleton.getInstance().getProductToCode().get(productId);
 
-        long userid = 496955364891361767L; // user id;
+        JSONObject product = ProductSingleton.getInstance().getProduct(code);
+        JSONArray accessories = product.getJSONArray("accessories");
 
-        TechConversation conversation = new TechConversation(userid, client);
+        if (accessories.length() == 0) {
+            return;
+        }
 
-        conversation.processRawMessage("Mình muốn tìm điện thoại giá từ 1 triệu đến 5 triệu");
+        List<String> moreItems = new ArrayList<>();
 
+        for (int i = 0; i < accessories.length(); i++) {
+            moreItems.add(accessories.getString(i));
+        }
+
+        List<JSONObject> products = moreItems.stream().map(x -> ProductSingleton.getInstance().getProduct(x)).collect(Collectors.toList());
+        List<ProductInfo> accessoriesProducts = new ArrayList<>();
+        for (int i = 0; i < Math.min(3, products.size()); i++) {
+            JSONObject result = products.get(i);
+            String id = result.getString("productId");
+            String productUrl = ProductSingleton.getInstance().getCodeToDetailLink().get(id);
+            String imgUrl = result.getString("imgUrl");
+            String title = result.getString("name");
+            String desc = result.getString("price");
+            String price = result.get("price").toString();
+            accessoriesProducts.add(new ProductInfo(id, productUrl, imgUrl, title, desc, price));
+        }
+
+        sendProduct(accessoriesProducts);
+        oaClient.sendTextMessage(userId, "Phía trên là 1 số phụ kiện tham khảo rất có ích cho sản phẩm bạn vừa mua đấy :)");
     }
 
     public BoolQueryBuilder exact(String name, String value) {
@@ -394,7 +431,8 @@ public class TechConversation {
         }
 
         messages.add(getShowMoreMessage());
-        oaClient.sendActionMessage(userId, messages);
+        JsonObject result = oaClient.sendActionMessage(userId, messages);
+        LogCenter.info(LOG, "Result put products: " + result);
     }
 
     private JsonObject popUp() {

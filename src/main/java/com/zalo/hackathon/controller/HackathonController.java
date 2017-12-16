@@ -50,7 +50,8 @@ public class HackathonController {
                         @QueryParam("href") String href,
                         @QueryParam("thumb") String thumb,
                         @QueryParam("timestamp") String timestamp,
-                        @QueryParam("mac") String mac) {
+                        @QueryParam("mac") String mac,
+                        @QueryParam("order") String order) {
 
         UserMessage msg = new UserMessage(
                 event,
@@ -62,7 +63,8 @@ public class HackathonController {
                 href,
                 thumb,
                 Long.parseLong(timestamp),
-                mac
+                mac,
+                order
         );
 
         LogCenter.info(LOG, "Receive message: " + msg);

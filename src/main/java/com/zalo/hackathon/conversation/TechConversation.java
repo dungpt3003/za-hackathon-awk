@@ -135,6 +135,9 @@ public class TechConversation {
                 case "sendmsg":
                     processRawMessage(message.getMessage());
                     break;
+
+                case "order":
+                    processOrder(message.getOrder());
             }
 
 
@@ -147,6 +150,10 @@ public class TechConversation {
             }
         }
         return "OK";
+    }
+
+    public void processOrder(String order) {
+
     }
 
     public void processRawMessage(String message) throws APIException {

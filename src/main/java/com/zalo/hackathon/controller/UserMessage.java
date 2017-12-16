@@ -1,7 +1,5 @@
 package com.zalo.hackathon.controller;
 
-import com.google.gson.Gson;
-
 public class UserMessage {
     String event;
     long oaid;
@@ -13,8 +11,9 @@ public class UserMessage {
     String thumb;
     long timestamp;
     String mac;
+    String order;
 
-    public UserMessage(String event, long oaid, long fromuid, long appid, String msgid, String message, String href, String thumb, long timestamp, String mac) {
+    public UserMessage(String event, long oaid, long fromuid, long appid, String msgid, String message, String href, String thumb, long timestamp, String mac, String order) {
         this.event = event;
         this.oaid = oaid;
         this.fromuid = fromuid;
@@ -25,6 +24,11 @@ public class UserMessage {
         this.thumb = thumb;
         this.timestamp = timestamp;
         this.mac = mac;
+        this.order = order;
+    }
+
+    public String getOrder() {
+        return order;
     }
 
     public String getEvent() {
@@ -109,6 +113,18 @@ public class UserMessage {
 
     @Override
     public String toString() {
-        return new Gson().toJson(this);
+        return "UserMessage{" +
+                "event='" + event + '\'' +
+                ", oaid=" + oaid +
+                ", fromuid=" + fromuid +
+                ", appid=" + appid +
+                ", msgid='" + msgid + '\'' +
+                ", message='" + message + '\'' +
+                ", href='" + href + '\'' +
+                ", thumb='" + thumb + '\'' +
+                ", timestamp=" + timestamp +
+                ", mac='" + mac + '\'' +
+                ", order='" + order + '\'' +
+                '}';
     }
 }

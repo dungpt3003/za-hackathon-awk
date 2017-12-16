@@ -29,7 +29,10 @@ public class EntityDetector {
             "iphone",
             "galaxy",
             "xperia",
-            "vivo"
+            "vivo",
+            "nokia",
+            "htc",
+            "mobell"
     ));
 
     private static Set<String> DIEN_THOAI;

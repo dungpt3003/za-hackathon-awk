@@ -22,6 +22,7 @@ import com.zalo.hackathon.model.ProductInfo;
 import com.zalo.hackathon.utils.LogCenter;
 import com.zalo.hackathon.utils.MapUtils;
 import com.zalo.hackathon.utils.ZaStringUtils;
+import com.zalo.hackathon.detector.SentimentDetector;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -58,6 +59,10 @@ public class TechConversation {
 
     private static final String SORRY_MESSAGE = "Xin lỗi bạn, Minibot đang trong quá trình xây dựng nên vẫn còn lỗi, chưa thể trả lời được bạn câu hỏi này, Mong bạn thông cảm :(";
 
+    private static final String THANKYOU_MESSAGE = "Bạn hài lòng về dịch vụ của shop chứ? Hãy tiếp tục ủng hộ shop và giới thiệu cho bạn bè nhé!";
+
+    private static final String NEGATIVE_FEEDBACK_MESSAGE = "Xin lỗi vì đã làm bạn phiền lòng, shop sẽ ghi nhận ý kiến của bạn để cải thiện chất lượng dịch vụ!";
+
     public static int SHOW_MORE_BATCH = 3;
     private static Logger LOG = LogManager.getLogger(TechConversation.class);
     private static BaseElasticDao elasticDao;
@@ -73,6 +78,7 @@ public class TechConversation {
     private List<ProductInfo> cachedProducts;
     private List<ProductInfo> currentShowProducts;
     private int currentIndexProduct;
+    private SentimentDetector sentimentDetector;
 
 
     public TechConversation(long userId, ZaloOaClient oaClient) throws APIException, UnknownHostException {
@@ -83,6 +89,7 @@ public class TechConversation {
         if (elasticDao == null) {
             elasticDao = new BaseElasticDao(new ElasticSearchConfig(Config.ELASTIC_HOST, Config.ELASTIC_PORT, Config.ELASTIC_CLUSTER_NAME));
         }
+        this.sentimentDetector = new SentimentDetector();
     }
 
 
@@ -125,19 +132,19 @@ public class TechConversation {
         long userid = 6248692413216850869L;
         TechConversation conversation = new TechConversation(userid, client);
 
-        conversation.receiveMessage(new UserMessage(
-                "order",
-                Config.OA_ID,
-                userid,
-                1000L,
-                "fuck",
-                "fuck",
-                null,
-                null,
-                1000,
-                "ASd",
-                "{\"productId\":\"a9a60d7b2a3ec3609a2f\"}"));
-//        conversation.processRawMessage("Mình muốn tìm điện thoại từ 1 triệu đến 10 triệu");
+//        conversation.receiveMessage(new UserMessage(
+//                "order",
+//                Config.OA_ID,
+//                userid,
+//                1000L,
+//                "fuck",
+//                "fuck",
+//                null,
+//                null,
+//                1000,
+//                "ASd",
+//                "{\"productId\":\"a9a60d7b2a3ec3609a2f\"}"));
+          conversation.processRawMessage("Bạn ngu quá đi");
 //        conversation.processRawMessage("Cho mình đánh giá con thứ 2");
 //        conversation.processRawMessage("Tôi muốn mua điện thoại samsung galaxy");
 
@@ -262,11 +269,26 @@ public class TechConversation {
 
         if (intents.contains(Intent.XIN_CHAO)) {
             resetState();
-            oaClient.sendTextMessage(userId, "Ủn ỉn shop xin chào bạn " + user.getDisplayName() + ", mình có thể giúp gì cho bạn :) ?");
+            oaClient.sendTextMessage(userId, "AWK shop xin chào bạn " + user.getDisplayName() + ", mình có thể giúp gì cho bạn :) ?");
             return;
         }
 
-        oaClient.sendTextMessage(userId, SORRY_MESSAGE);
+        int check = 0;
+
+        try {
+            int sentiment = sentimentDetector.detectSentiment(message);
+            check = Math.abs(sentiment);
+            if (sentiment == 1)
+                oaClient.sendTextMessage(userId, THANKYOU_MESSAGE);
+            else if (sentiment == -1) {
+                oaClient.sendTextMessage(userId, NEGATIVE_FEEDBACK_MESSAGE);
+                //TODO: Send message to the manager
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (check == 0)
+            oaClient.sendTextMessage(userId, SORRY_MESSAGE);
         resetState();
     }
 

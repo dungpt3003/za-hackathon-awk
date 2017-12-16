@@ -27,6 +27,7 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.RangeQueryBuilder;
 import org.elasticsearch.search.SearchHit;
 
 import java.lang.reflect.Type;
@@ -78,16 +79,6 @@ public class TechConversation {
         elasticDao = new BaseElasticDao(new ElasticSearchConfig(Config.ELASTIC_HOST, Config.ELASTIC_PORT, Config.ELASTIC_CLUSTER_NAME));
     }
 
-    public static void main(String args[]) throws Exception {
-        ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
-
-        long userid = 496955364891361767L; // user id;
-
-        TechConversation conversation = new TechConversation(userid, client);
-
-        conversation.processRawMessage("Xin chào");
-
-    }
 
     private User getProfile(long id) throws APIException {
         JsonObject result = oaClient.getProfile(id);
@@ -276,6 +267,27 @@ public class TechConversation {
         oaClient.sendTextMessage(userId, "Xin lỗi bạn, mình nghĩ bạn đang định hỏi gì đó nhưng mình chưa hiểu lắm, bạn có thể nói rõ hơn được không ?");
     }
 
+    public static void main(String args[]) throws Exception {
+        ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
+
+        long userid = 496955364891361767L; // user id;
+
+        TechConversation conversation = new TechConversation(userid, client);
+
+        conversation.processRawMessage("Mình muốn tìm điện thoại giá từ 1 triệu đến 5 triệu");
+
+    }
+
+    public BoolQueryBuilder exact(String name, String value) {
+        BoolQueryBuilder bool = QueryBuilders.boolQuery();
+
+        for (String word : value.split(" ")) {
+            bool = bool.should(QueryBuilders.termQuery(name, word));
+        }
+
+        return bool.minimumShouldMatch(value.split(" ").length);
+    }
+
     public void askPrice(Map<EntityType, List<Entity>> entities, Set<Intent> intents) throws APIException {
         oaClient.sendTextMessage(userId, "Hệ thống đang tìm sản phẩm, bạn " + user.getDisplayName() + " đợi tí nhé :) ");
 
@@ -284,10 +296,9 @@ public class TechConversation {
         StringBuilder keyword = new StringBuilder();
         EntityType mainType = detectMainEntity(entities);
         for (EntityType type : entities.keySet()) {
-            if (type == EntityType.DIEN_THOAI) {
+            if (type == EntityType.PRICE) {
                 continue;
             }
-
             for (Entity entity : entities.get(type)) {
                 keyword.append(entity.getValue()).append(" ");
             }
@@ -307,83 +318,31 @@ public class TechConversation {
 
         if (!entities.containsKey(EntityType.PRICE)) {
             oaClient.sendTextMessage(userId, "Xin lỗi bạn, minishop đoán bạn muốn hỏi shop gì đó nhưng shop không nhận diện được, xin lỗi bạn nhé.");
+            return;
         }
 
-        int price = Integer.parseInt(entities.get(EntityType.PRICE).get(0).getValue());
 
+        RangeQueryBuilder builder;
         if (entities.get(EntityType.PRICE).size() == 2) {
             Entity price1 = entities.get(EntityType.PRICE).get(0);
-            Entity price2 = entities.get(EntityType.PRICE).get(0);
+            Entity price2 = entities.get(EntityType.PRICE).get(1);
 
+            int minPrice = Math.min(Integer.parseInt(price1.getValue()), Integer.parseInt(price2.getValue()));
+            int maxPrice = Math.max(Integer.parseInt(price1.getValue()), Integer.parseInt(price2.getValue()));
+
+            builder = QueryBuilders.rangeQuery("price").from(minPrice).to(maxPrice);
+        } else if (entities.get(EntityType.PRICE).size() == 1) {
+            int price = Integer.parseInt(entities.get(EntityType.PRICE).get(0).getValue());
+            builder = QueryBuilders.rangeQuery("price").from(0).to(price);
+        } else {
+            oaClient.sendTextMessage(userId, "Xin lỗi bạn, mình nghĩ bạn đang định hỏi gì đó nhưng mình chưa hiểu lắm, bạn có thể nói rõ hơn được không ?");
+            return;
         }
 
-        boolQuery = boolQuery.must(QueryBuilders.queryStringQuery(keyword.toString())).must(QueryBuilders.queryStringQuery(keyword.toString()));
-        QueryBuilders.rangeQuery("price").from(0).to(price);
-        LogCenter.info(LOG, boolQuery.toString());
-        SearchResponse response = elasticDao.query(boolQuery, Config.INDEX, 100);
-        Map<Map<String, Object>, Float> results = convertSearchResponse(response);
-        results = MapUtils.sortByValue(results, false);
+        boolQuery = boolQuery
+                .must(QueryBuilders.queryStringQuery(keyword.toString()))
+                .must(builder);
 
-        cachedProducts = new ArrayList<>();
-        for (Map<String, Object> result : results.keySet()) {
-            System.out.println(result.get("productId") + " " + result.get("name") + " " + results.get(result) + "  " + result.get("imgUrl"));
-            String id = result.get("productId").toString();
-            String productUrl = result.get("productDetailLink").toString();
-            String imgUrl = result.get("imgUrl").toString();
-            String title = result.get("name").toString();
-            String desc = result.get("price").toString();
-            String price = result.get("price").toString();
-            cachedProducts.add(new ProductInfo(id, productUrl, imgUrl, title, desc, price));
-        }
-
-        LogCenter.info(LOG, "Cache " + cachedProducts.size() + " products");
-
-        currentIndexProduct = SHOW_MORE_BATCH;
-        currentShowProducts = cachedProducts.subList(0, SHOW_MORE_BATCH);
-        sendProduct(currentShowProducts);
-    }
-
-    public BoolQueryBuilder exact(String name, String value) {
-        BoolQueryBuilder bool = QueryBuilders.boolQuery();
-
-        for (String word : value.split(" ")) {
-            bool = bool.should(QueryBuilders.termQuery(name, word));
-        }
-
-        return bool.minimumShouldMatch(value.split(" ").length);
-    }
-
-    public void findItem(Map<EntityType, List<Entity>> entities, Set<Intent> intents) throws APIException {
-        oaClient.sendTextMessage(userId, "Hệ thống đang tìm sản phẩm, bạn " + user.getDisplayName() + " đợi tí nhé :) ");
-
-        LogCenter.info(LOG, "Detect intent: " + intents);
-        LogCenter.info(LOG, "Detect entities: " + entities);
-
-        StringBuilder keyword = new StringBuilder();
-        EntityType mainType = detectMainEntity(entities);
-        for (EntityType type : entities.keySet()) {
-            if (type == EntityType.DIEN_THOAI) {
-                continue;
-            }
-
-            for (Entity entity : entities.get(type)) {
-                keyword.append(entity.getValue()).append(" ");
-            }
-        }
-
-        LogCenter.info(LOG, "Keyword: " + keyword);
-        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        if (mainType == EntityType.DIEN_THOAI) {
-            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", DIEN_THOAI));
-        } else if (mainType == EntityType.PHU_KIEN) {
-            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", PHU_KIEN));
-        } else if (mainType == EntityType.OP_LUNG) {
-            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", OPLUNG));
-        } else if (mainType == EntityType.SAC_PIN) {
-            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", SAC_DIEN_THOAI));
-        }
-
-        boolQuery = boolQuery.must(QueryBuilders.queryStringQuery(keyword.toString())).must(QueryBuilders.queryStringQuery(keyword.toString()));
         LogCenter.info(LOG, boolQuery.toString());
         SearchResponse response = elasticDao.query(boolQuery, Config.INDEX, 100);
         Map<Map<String, Object>, Float> results = convertSearchResponse(response);
@@ -510,5 +469,59 @@ public class TechConversation {
         STATE_INIT,
     }
 
+    public void findItem(Map<EntityType, List<Entity>> entities, Set<Intent> intents) throws APIException {
+        oaClient.sendTextMessage(userId, "Hệ thống đang tìm sản phẩm, bạn " + user.getDisplayName() + " đợi tí nhé :) ");
+
+        LogCenter.info(LOG, "Detect intent: " + intents);
+        LogCenter.info(LOG, "Detect entities: " + entities);
+
+        StringBuilder keyword = new StringBuilder();
+        EntityType mainType = detectMainEntity(entities);
+        for (EntityType type : entities.keySet()) {
+            if (type == EntityType.PRICE) {
+                continue;
+            }
+
+            for (Entity entity : entities.get(type)) {
+                keyword.append(entity.getValue()).append(" ");
+            }
+        }
+
+        LogCenter.info(LOG, "Keyword: " + keyword);
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        if (mainType == EntityType.DIEN_THOAI) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", DIEN_THOAI));
+        } else if (mainType == EntityType.PHU_KIEN) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", PHU_KIEN));
+        } else if (mainType == EntityType.OP_LUNG) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", OPLUNG));
+        } else if (mainType == EntityType.SAC_PIN) {
+            boolQuery = boolQuery.must(QueryBuilders.termQuery("category", SAC_DIEN_THOAI));
+        }
+
+        boolQuery = boolQuery.must(QueryBuilders.queryStringQuery(keyword.toString())).must(QueryBuilders.queryStringQuery(keyword.toString()));
+        LogCenter.info(LOG, boolQuery.toString());
+        SearchResponse response = elasticDao.query(boolQuery, Config.INDEX, 100);
+        Map<Map<String, Object>, Float> results = convertSearchResponse(response);
+        results = MapUtils.sortByValue(results, false);
+
+        cachedProducts = new ArrayList<>();
+        for (Map<String, Object> result : results.keySet()) {
+            System.out.println(result.get("productId") + " " + result.get("name") + " " + results.get(result) + "  " + result.get("imgUrl"));
+            String id = result.get("productId").toString();
+            String productUrl = result.get("productDetailLink").toString();
+            String imgUrl = result.get("imgUrl").toString();
+            String title = result.get("name").toString();
+            String desc = result.get("price").toString();
+            String price = result.get("price").toString();
+            cachedProducts.add(new ProductInfo(id, productUrl, imgUrl, title, desc, price));
+        }
+
+        LogCenter.info(LOG, "Cache " + cachedProducts.size() + " products");
+
+        currentIndexProduct = SHOW_MORE_BATCH;
+        currentShowProducts = cachedProducts.subList(0, SHOW_MORE_BATCH);
+        sendProduct(currentShowProducts);
+    }
 
 }

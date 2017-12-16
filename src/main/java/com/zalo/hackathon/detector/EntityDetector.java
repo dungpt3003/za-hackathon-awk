@@ -245,7 +245,7 @@ public class EntityDetector {
         List<Entity> entities = new ArrayList<>();
         for (int i = 0; i < words.length; i++) {
             if (words[i].equals("trieu")) {
-                int detectValue = convertToNumber(words[i]);
+                int detectValue = convertToNumber(words[i - 1]);
                 if (detectValue == -1) {
                     continue;
                 }
@@ -254,7 +254,7 @@ public class EntityDetector {
             }
 
             if (words[i].startsWith("tram")) {
-                int detectValue = convertToNumber(words[i]);
+                int detectValue = convertToNumber(words[i - 1]);
                 if (detectValue == -1) {
                     continue;
                 }
@@ -270,11 +270,11 @@ public class EntityDetector {
         String normalize = ZaStringUtils.normalize(message);
 
         List<Entity> entities = new ArrayList<>();
-        if (normalize.contains("dau tien") || normalize.contains("thu nhat") || normalize.contains("1")) {
+        if (normalize.contains("dau tien") || normalize.contains("thu nhat") || normalize.contains("thu 1")) {
             entities.add(new Entity("1", EntityType.ORDER));
-        } else if (normalize.contains("thu hai") || normalize.contains("2") || normalize.contains("giua")) {
+        } else if (normalize.contains("thu hai") || normalize.contains("thu 2") || normalize.contains("giua")) {
             entities.add(new Entity("2", EntityType.ORDER));
-        } else if (normalize.contains("thu ba") || normalize.contains("3") || normalize.contains("cuoi cung")) {
+        } else if (normalize.contains("thu ba") || normalize.contains("thu 3") || normalize.contains("cuoi cung")) {
             entities.add(new Entity("3", EntityType.ORDER));
         }
 

@@ -42,8 +42,7 @@ public class EntityDetector {
     private static Set<String> PHU_KIEN;
 
     private static Set<String> OP_LUNG = new HashSet<>(Arrays.asList(
-            "ốp lưng",
-            "ốp"
+            "ốp lưng"
     ));
 
     private static Set<String> SAC = new HashSet<>(Arrays.asList(

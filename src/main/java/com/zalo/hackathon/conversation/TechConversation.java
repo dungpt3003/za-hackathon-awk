@@ -80,7 +80,9 @@ public class TechConversation {
         this.oaClient = oaClient;
 
         user = getProfile(userId);
-        elasticDao = new BaseElasticDao(new ElasticSearchConfig(Config.ELASTIC_HOST, Config.ELASTIC_PORT, Config.ELASTIC_CLUSTER_NAME));
+        if (elasticDao == null) {
+            elasticDao = new BaseElasticDao(new ElasticSearchConfig(Config.ELASTIC_HOST, Config.ELASTIC_PORT, Config.ELASTIC_CLUSTER_NAME));
+        }
     }
 
 
@@ -368,7 +370,7 @@ public class TechConversation {
         currentState = State.STATE_ASK_DETAIL;
 
         if (entities.getOrDefault(EntityType.ORDER, new ArrayList<>()).size() > 0) {
-            int order = Integer.parseInt(entities.get(EntityType.ORDER).get(0).getValue());
+            int order = Integer.parseInt(entities.get(EntityType.ORDER).get(0).getValue()) - 1;
             LogCenter.info(LOG, "Ask review, current product = null, detect order " + order);
             currentProduct = currentShowProducts.get(order);
         }
@@ -415,7 +417,7 @@ public class TechConversation {
             double avgRating = sumRating * 1.0 / actions.size();
             ProductInfo avgInfo = new ProductInfo(
                     "avg_info",
-                    getRatingImage(avgRating),
+                    ProductSingleton.getInstance().getCodeToDetailLink().get(currentProduct.getId()),
                     getRatingImage(avgRating),
                     "Đánh giá trung bình",
                     "Từ người dùng trên mạng",

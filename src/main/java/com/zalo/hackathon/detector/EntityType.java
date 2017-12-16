@@ -21,5 +21,6 @@ public enum EntityType {
     OP_LUNG,
     CAP_DIEN_THOAI,
     SAC_PIN,
-    PRICE
+    PRICE,
+    CURRENT_PRODUCT
 }

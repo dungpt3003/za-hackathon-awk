@@ -125,9 +125,9 @@ public class TechConversation {
         long userid = 6248692413216850869L;
         TechConversation conversation = new TechConversation(userid, client);
 
-        conversation.processRawMessage("Tôi không thích shop");
-//        conversation.processRawMessage("Cho mình đánh giá con thứ 2");
-//        conversation.processRawMessage("Tôi muốn mua điện thoại samsung galaxy");
+        conversation.processRawMessage("Tôi muốn tìm điện thoại Sony");
+        conversation.processRawMessage("Cho mình đánh giá con thứ 2");
+        conversation.processRawMessage("Mình muốn mua sản phẩm này");
 
     }
 
@@ -239,7 +239,7 @@ public class TechConversation {
         }
 
         if (intents.contains(Intent.BUY)) {
-            if (currentProduct == null && currentShowProducts == null && !entities.containsKey(EntityType.ORDER)) {
+            if (currentProduct == null && currentShowProducts == null && (!entities.containsKey(EntityType.ORDER) && !entities.containsKey(EntityType.CURRENT_PRODUCT))) {
                 findItem(entities, intents);
                 return;
             } else {

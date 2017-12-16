@@ -51,6 +51,13 @@ public class IntentDetector {
             "hey",
     };
 
+    private static final String KEY_WORD_REVIEW[] = new String[]{
+            "review",
+            "đánh giá",
+            "người dùng đánh giá",
+            "đánh giá từ người dùng"
+    };
+
     public static Set<Intent> detect(String message, Map<EntityType, List<Entity>> entities) {
         Set<Intent> intents = new HashSet<>();
         for (Intent intent : Intent.values()) {
@@ -82,6 +89,10 @@ public class IntentDetector {
 
                 case XIN_CHAO:
                     check = checkIntent(KEYWORD_XIN_CHAO, message);
+                    break;
+
+                case ASK_RATING:
+                    check = checkIntent(KEY_WORD_REVIEW, message);
                     break;
             }
 

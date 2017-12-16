@@ -51,6 +51,7 @@ public class TechConversation {
     public static final String SAC_DIEN_THOAI = "sac dtdd";
     public static final String TAI_NGHE = "tai nghe";
     public static final String MAY_TINH_BANG = "may tinh bang";
+    public static final String REVIEW_DAY_DU_PREFIX = "Đánh giá đầy đủ từ";
 
     public static final String SHOW_MORE_COMMAND = "#Xem thêm sản phẩm";
     private static final String SHOW_MORE_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/More_Icon_C.svg/500px-More_Icon_C.svg.png";
@@ -128,7 +129,26 @@ public class TechConversation {
         }
     }
 
+    public static void main(String args[]) throws Exception {
+        ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
+
+//        System.out.println(client.getProfile(841697448948L));
+//        long userid = 496955364891361767L; // user id;
+        long userid = 6248692413216850869L;
+        TechConversation conversation = new TechConversation(userid, client);
+
+        conversation.processRawMessage("Mình muốn tìm điện thoại iphone");
+        conversation.processRawMessage("Mình muốn xem chi tiết sản phẩn thứ 2");
+        conversation.processRawMessage("Đánh giá con này như thế nào nhỉ ?");
+
+    }
+
     public String receiveMessage(UserMessage message) {
+
+        if (message.getMessage().startsWith(REVIEW_DAY_DU_PREFIX)) {
+            return "OK";
+        }
+
         try {
             switch (message.getEvent()) {
                 case "acceptinvite":
@@ -155,18 +175,19 @@ public class TechConversation {
         return "OK";
     }
 
-    public static void main(String args[]) throws Exception {
-        ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
-
-        long userid = 496955364891361767L; // user id;
-
-        TechConversation conversation = new TechConversation(userid, client);
-
-//        conversation.processRawMessage("Mình muốn tìm điện thoại giá từ 1 triệu đến 5 triệu");
-        conversation.processOrder("{\n" +
-                "  \"productId\":\"a9a60d7b2a3ec3609a2f\"\n" +
-                "}");
-
+    public String getRatingImage(double rating) {
+        long roundRating = Math.round(rating);
+        if (roundRating <= 1) {
+            return Config.STAR_1_URL;
+        } else if (roundRating <= 2) {
+            return Config.STAR_2_URL;
+        } else if (roundRating <= 3) {
+            return Config.STAR_3_URL;
+        } else if (roundRating <= 4) {
+            return Config.STAR_4_URL;
+        } else {
+            return Config.STAR_5_URL;
+        }
     }
 
     public void processRawMessage(String message) throws APIException {
@@ -176,6 +197,11 @@ public class TechConversation {
 
         if (StringUtils.equals(message, SHOW_MORE_COMMAND)) {
             processShowMore();
+            return;
+        }
+
+        if (intents.contains(Intent.ASK_RATING)) {
+            askReview();
             return;
         }
 
@@ -332,6 +358,61 @@ public class TechConversation {
         return bool.minimumShouldMatch(value.split(" ").length);
     }
 
+    public void askReview() throws APIException {
+        currentState = State.STATE_ASK_DETAIL;
+        if (currentProduct != null) {
+            JSONObject object = ProductSingleton.getInstance().getProduct(currentProduct.getId());
+            JSONArray comments = object.getJSONArray("comments");
+
+            if (comments.length() == 0) {
+                oaClient.sendTextMessage(userId, "Sản phẩm " + currentProduct.getTitle() + " hiện tại chưa có bất cứ đánh giá nào ạ");
+                return;
+            }
+
+            List<ProductInfo> actions = new ArrayList<>();
+            double sumRating = 0;
+            for (int i = 0; i < Math.min(3, comments.length()); i++) {
+                JSONObject comment = comments.getJSONObject(i);
+                String cmt = comment.getString("cmt");
+                String date = comment.getString("date");
+                String name = comment.getString("name");
+                int rating = comment.getInt("rating");
+
+                String s = (name + " - " + cmt);
+                s = s.substring(0, Math.min(97, s.length()));
+                s = s.substring(0, s.lastIndexOf(" "));
+                actions.add(new ProductInfo(
+                        name,
+                        getRatingImage(rating),
+                        getRatingImage(rating),
+                        s,
+                        cmt,
+                        ""
+                ));
+
+                sumRating = sumRating + rating;
+            }
+
+            double avgRating = sumRating * 1.0 / actions.size();
+            ProductInfo avgInfo = new ProductInfo(
+                    "avg_info",
+                    getRatingImage(avgRating),
+                    getRatingImage(avgRating),
+                    "Đánh giá trung bình",
+                    "Từ người dùng trên mạng",
+                    ""
+            );
+
+            List<ProductInfo> finalList = new ArrayList<>();
+            finalList.add(avgInfo);
+            finalList.addAll(actions);
+            sendRatings(finalList);
+            return;
+        }
+
+        oaClient.sendTextMessage(userId, "Xin lỗi bạn, mình nghĩ bạn đang định hỏi gì đó nhưng mình chưa hiểu lắm, bạn có thể nói rõ hơn được không ?");
+    }
+
     public void askPrice(Map<EntityType, List<Entity>> entities, Set<Intent> intents) throws APIException {
         oaClient.sendTextMessage(userId, "Hệ thống đang tìm sản phẩm, bạn " + user.getDisplayName() + " đợi tí nhé :) ");
 
@@ -435,6 +516,20 @@ public class TechConversation {
         LogCenter.info(LOG, "Result put products: " + result);
     }
 
+    private void sendRatings(List<ProductInfo> productInfos) throws APIException {
+
+        LogCenter.info(LOG, "Product sent: " + productInfos);
+
+        List<MsgAction> messages = new ArrayList<>();
+        messages.add(getInAppMessage(productInfos.get(0)));
+        for (int i = 1; i < productInfos.size(); i++) {
+            messages.add(getRatingActionMessage(productInfos.get(i)));
+        }
+
+        JsonObject result = oaClient.sendActionMessage(userId, messages);
+        LogCenter.info(LOG, "Result put products: " + result);
+    }
+
     private JsonObject popUp() {
         JsonObject popup = new JsonObject();
         popup.addProperty("title", "Chuyển tiếp");
@@ -458,19 +553,44 @@ public class TechConversation {
         return resps;
     }
 
+    private QueryShowFix getRatingActionMessage(ProductInfo productInfo) {
+        QueryShowFix productMessage = new QueryShowFix();
+        productMessage.setDescription(productInfo.getDesc());
+        productMessage.setThumb(productInfo.getImageUrl());
+        productMessage.setData(REVIEW_DAY_DU_PREFIX + " " + productInfo.getId() + ": " + productInfo.getDesc());
+
+        String title = "";
+        if (!StringUtils.isEmpty(productInfo.getPrice())) {
+            title = productInfo.getTitle() + " - " + productInfo.getPrice() + "đ";
+        } else {
+            title = productInfo.getTitle();
+        }
+        productMessage.setTitle(title);
+
+        return productMessage;
+    }
+
+
     private InAppMessage getInAppMessage(ProductInfo productInfo) {
         InAppMessage productMessage = new InAppMessage();
         productMessage.setUrl(productInfo.getUrl());
         productMessage.setDescription(productInfo.getDesc());
         productMessage.setPopup(popUp());
         productMessage.setThumb(productInfo.getImageUrl());
-        productMessage.setTitle(productInfo.getTitle() + " - " + productInfo.getPrice() + "đ");
+
+        String title = "";
+        if (!StringUtils.isEmpty(productInfo.getPrice())) {
+            title = productInfo.getTitle() + " - " + productInfo.getPrice() + "đ";
+        } else {
+            title = productInfo.getTitle();
+        }
+        productMessage.setTitle(title);
 
         return productMessage;
     }
 
     private class QueryShowFix extends QueryShowAction {
-        String action = "oa.query.hide";
+        String action = "oa.query.show";
     }
 
     private class QueryHideFix extends QueryHideAction {

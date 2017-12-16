@@ -18,4 +18,9 @@ public class Config {
     public static final String URL_POST_IMAGE = "http://45.124.94.45:7000/predict";
     public static MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
+    public static String STAR_1_URL = "http://45.124.94.45:10000/1_stars.png";
+    public static String STAR_2_URL = "http://45.124.94.45:10000/2_stars.png";
+    public static String STAR_3_URL = "http://45.124.94.45:10000/3_stars.png";
+    public static String STAR_4_URL = "http://45.124.94.45:10000/4_stars.png";
+    public static String STAR_5_URL = "http://45.124.94.45:10000/5_stars.png";
 }

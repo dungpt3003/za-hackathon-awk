@@ -46,7 +46,7 @@ public class ProductInfo {
     public String toString() {
         return "ProductInfo{" +
                 "id='" + id + '\'' +
-                ", url='" + url + '\'' +
+                ", getRatingImage='" + url + '\'' +
                 ", imageUrl='" + imageUrl + '\'' +
                 ", title='" + title + '\'' +
                 ", desc='" + desc + '\'' +

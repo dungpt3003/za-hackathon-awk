@@ -115,20 +115,6 @@ public class TechConversation {
         return new Gson().fromJson(json, type);
     }
 
-    public void processShowMore() throws APIException {
-        LogCenter.info(LOG, "Process show more command, current index = " + currentIndexProduct);
-        List<ProductInfo> newShowProducts = cachedProducts.subList(currentIndexProduct, Math.min(currentIndexProduct + SHOW_MORE_BATCH, cachedProducts.size()));
-        sendProduct(currentShowProducts);
-        if (newShowProducts.size() == 0) {
-            oaClient.sendTextMessage(userId, "Xin lỗi bạn, không còn sản phẩm nào trong kết quả tìm kiếm");
-            return;
-        } else {
-            sendProduct(newShowProducts);
-            currentShowProducts = newShowProducts;
-            currentIndexProduct += SHOW_MORE_BATCH;
-        }
-    }
-
     public static void main(String args[]) throws Exception {
         ZaloOaClient client = new ZaloOaClient(new ZaloOaInfo(Config.OA_ID, Config.SECRET_KEY));
 
@@ -137,10 +123,20 @@ public class TechConversation {
         long userid = 6248692413216850869L;
         TechConversation conversation = new TechConversation(userid, client);
 
-        conversation.processRawMessage("Mình muốn tìm điện thoại iphone");
-        conversation.processRawMessage("Mình muốn xem chi tiết sản phẩn thứ 2");
-        conversation.processRawMessage("Đánh giá con này như thế nào nhỉ ?");
+        conversation.processRawMessage("Mình muốn tìm điện thoại từ 9 triệu đến 10 triệu");
+    }
 
+    public void processShowMore() throws APIException {
+        LogCenter.info(LOG, "Process show more command, current index = " + currentIndexProduct);
+
+        int newBatch = Math.min(cachedProducts.size() - currentIndexProduct, SHOW_MORE_BATCH);
+        if (newBatch <= 0) {
+            return;
+        }
+
+        List<ProductInfo> currentShowProducts = cachedProducts.subList(currentIndexProduct, currentIndexProduct + newBatch);
+        currentIndexProduct = currentIndexProduct + newBatch;
+        sendProduct(currentShowProducts, currentIndexProduct < cachedProducts.size());
     }
 
     public String receiveMessage(UserMessage message) {
@@ -344,7 +340,7 @@ public class TechConversation {
             accessoriesProducts.add(new ProductInfo(id, productUrl, imgUrl, title, desc, price));
         }
 
-        sendProduct(accessoriesProducts);
+        sendProduct(accessoriesProducts, false);
         oaClient.sendTextMessage(userId, "Phía trên là 1 số phụ kiện tham khảo rất có ích cho sản phẩm bạn vừa mua đấy :)");
     }
 
@@ -487,9 +483,10 @@ public class TechConversation {
 
         LogCenter.info(LOG, "Cache " + cachedProducts.size() + " products");
 
-        currentIndexProduct = SHOW_MORE_BATCH;
-        currentShowProducts = cachedProducts.subList(0, SHOW_MORE_BATCH);
-        sendProduct(currentShowProducts);
+        int batch = Math.min(SHOW_MORE_BATCH, cachedProducts.size());
+        currentIndexProduct = batch;
+        currentShowProducts = cachedProducts.subList(0, batch);
+        sendProduct(currentShowProducts, currentIndexProduct < cachedProducts.size());
     }
 
     private QueryHideAction getShowMoreMessage() {
@@ -502,7 +499,7 @@ public class TechConversation {
         return showMore;
     }
 
-    private void sendProduct(List<ProductInfo> productInfos) throws APIException {
+    private void sendProduct(List<ProductInfo> productInfos, boolean isShowMore) throws APIException {
 
         LogCenter.info(LOG, "Product sent: " + productInfos);
 
@@ -511,7 +508,10 @@ public class TechConversation {
             messages.add(getInAppMessage(productInfos.get(i)));
         }
 
-        messages.add(getShowMoreMessage());
+        if (isShowMore) {
+            messages.add(getShowMoreMessage());
+        }
+
         JsonObject result = oaClient.sendActionMessage(userId, messages);
         LogCenter.info(LOG, "Result put products: " + result);
     }
@@ -684,9 +684,10 @@ public class TechConversation {
 
         LogCenter.info(LOG, "Cache " + cachedProducts.size() + " products");
 
-        currentIndexProduct = SHOW_MORE_BATCH;
-        currentShowProducts = cachedProducts.subList(0, SHOW_MORE_BATCH);
-        sendProduct(currentShowProducts);
+        int currentBatch = Math.min(SHOW_MORE_BATCH, cachedProducts.size());
+        currentShowProducts = cachedProducts.subList(0, currentBatch);
+        sendProduct(currentShowProducts, currentBatch < cachedProducts.size());
+        currentIndexProduct = currentBatch;
     }
 
 }

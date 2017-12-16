@@ -1,6 +1,7 @@
 package com.zalo.hackathon;
 
 import com.zalo.hackathon.application.HackathonApplication;
+import com.zalo.hackathon.detector.SentimentDetector;
 import io.undertow.Undertow;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -11,6 +12,7 @@ import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
 
 public class WebhookMain {
     public static void main(String args[]) {
+        SentimentDetector.getInstance();
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
         Configuration config = ctx.getConfiguration();
         LoggerConfig loggerCfg = config.getLoggerConfig("io.netty");

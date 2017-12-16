@@ -125,9 +125,21 @@ public class TechConversation {
         long userid = 6248692413216850869L;
         TechConversation conversation = new TechConversation(userid, client);
 
+        conversation.receiveMessage(new UserMessage(
+                "order",
+                Config.OA_ID,
+                userid,
+                1000L,
+                "fuck",
+                "fuck",
+                null,
+                null,
+                1000,
+                "ASd",
+                "{\"productId\":\"a9a60d7b2a3ec3609a2f\"}"));
 //        conversation.processRawMessage("Mình muốn tìm điện thoại từ 1 triệu đến 10 triệu");
 //        conversation.processRawMessage("Cho mình đánh giá con thứ 2");
-        conversation.processRawMessage("Tôi muốn mua điện thoại samsung galaxy");
+//        conversation.processRawMessage("Tôi muốn mua điện thoại samsung galaxy");
 
     }
 
@@ -145,13 +157,16 @@ public class TechConversation {
     }
 
     public String receiveMessage(UserMessage message) {
-
-        if (message.getMessage().startsWith(REVIEW_DAY_DU_PREFIX)) {
+        LogCenter.info(LOG, "We start to process message " + message);
+        LogCenter.info(LOG, "Event: " + message.getEvent());
+        if (message.getMessage() != null && message.getMessage().contains(REVIEW_DAY_DU_PREFIX)) {
+            LogCenter.info(LOG, "Message start with " + REVIEW_DAY_DU_PREFIX + " so it is not shown for user");
             return "OK";
         }
 
         try {
-            switch (message.getEvent()) {
+            LogCenter.info(LOG, message.getEvent());
+            switch (message.getEvent().trim()) {
                 case "acceptinvite":
                     processNewUser(message);
                     break;
@@ -161,6 +176,7 @@ public class TechConversation {
                     break;
 
                 case "order":
+                    LogCenter.info(LOG, "Start to process order " + message.getOrder());
                     processOrder(message.getOrder());
                     resetState();
                     break;
@@ -338,6 +354,7 @@ public class TechConversation {
         JSONObject product = ProductSingleton.getInstance().getProduct(code);
         JSONArray accessories = product.getJSONArray("accessories");
 
+        LogCenter.info(LOG, "Product " + productId + " has " + accessories.length() + " accessories");
         if (accessories.length() == 0) {
             return;
         }

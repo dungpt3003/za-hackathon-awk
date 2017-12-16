@@ -123,7 +123,10 @@ public class TechConversation {
         long userid = 6248692413216850869L;
         TechConversation conversation = new TechConversation(userid, client);
 
-        conversation.processRawMessage("Mình muốn tìm điện thoại từ 9 triệu đến 10 triệu");
+//        conversation.processRawMessage("Mình muốn tìm điện thoại từ 1 triệu đến 10 triệu");
+//        conversation.processRawMessage("Cho mình đánh giá con thứ 2");
+        conversation.processRawMessage("Tôi muốn mua điện thoại samsung galaxy");
+
     }
 
     public void processShowMore() throws APIException {
@@ -157,6 +160,8 @@ public class TechConversation {
 
                 case "order":
                     processOrder(message.getOrder());
+                    resetState();
+                    break;
             }
 
 
@@ -186,6 +191,12 @@ public class TechConversation {
         }
     }
 
+    public void resetState() {
+        currentShowProducts = null;
+        currentProduct = null;
+        currentIndexProduct = 0;
+        currentState = State.STATE_INIT;
+    }
     public void processRawMessage(String message) throws APIException {
         LogCenter.info(LOG, "Process raw message: " + message);
         Map<EntityType, List<Entity>> entities = EntityDetector.getInstance().detect(message);
@@ -197,7 +208,7 @@ public class TechConversation {
         }
 
         if (intents.contains(Intent.ASK_RATING)) {
-            askReview();
+            askReview(entities, intents);
             return;
         }
 
@@ -211,6 +222,7 @@ public class TechConversation {
         }
 
         if (intents.contains(Intent.FIND_ITEM)) {
+            resetState();
             findItem(entities, intents);
             return;
         }
@@ -221,16 +233,23 @@ public class TechConversation {
         }
 
         if (intents.contains(Intent.BUY)) {
-            oaClient.sendTextMessage(userId, "Bạn " + user.getDisplayName() + " có thể ấn vào ảnh sản phẩm để mua nhé :) ");
-            return;
+            if (currentProduct == null && currentShowProducts == null && !entities.containsKey(EntityType.ORDER)) {
+                findItem(entities, intents);
+                return;
+            } else {
+                oaClient.sendTextMessage(userId, "Bạn " + user.getDisplayName() + " có thể ấn vào ảnh sản phẩm để mua nhé :) ");
+                return;
+            }
         }
 
         if (intents.contains(Intent.XIN_CHAO)) {
+            resetState();
             oaClient.sendTextMessage(userId, "Ủn ỉn shop xin chào bạn " + user.getDisplayName() + ", mình có thể giúp gì cho bạn :) ?");
             return;
         }
 
         oaClient.sendTextMessage(userId, SORRY_MESSAGE);
+        resetState();
     }
 
 
@@ -344,18 +363,16 @@ public class TechConversation {
         oaClient.sendTextMessage(userId, "Phía trên là 1 số phụ kiện tham khảo rất có ích cho sản phẩm bạn vừa mua đấy :)");
     }
 
-    public BoolQueryBuilder exact(String name, String value) {
-        BoolQueryBuilder bool = QueryBuilders.boolQuery();
 
-        for (String word : value.split(" ")) {
-            bool = bool.should(QueryBuilders.termQuery(name, word));
+    public void askReview(Map<EntityType, List<Entity>> entities, Set<Intent> intents) throws APIException {
+        currentState = State.STATE_ASK_DETAIL;
+
+        if (entities.getOrDefault(EntityType.ORDER, new ArrayList<>()).size() > 0) {
+            int order = Integer.parseInt(entities.get(EntityType.ORDER).get(0).getValue());
+            LogCenter.info(LOG, "Ask review, current product = null, detect order " + order);
+            currentProduct = currentShowProducts.get(order);
         }
 
-        return bool.minimumShouldMatch(value.split(" ").length);
-    }
-
-    public void askReview() throws APIException {
-        currentState = State.STATE_ASK_DETAIL;
         if (currentProduct != null) {
             JSONObject object = ProductSingleton.getInstance().getProduct(currentProduct.getId());
             JSONArray comments = object.getJSONArray("comments");
@@ -377,6 +394,12 @@ public class TechConversation {
                 String s = (name + " - " + cmt);
                 s = s.substring(0, Math.min(97, s.length()));
                 s = s.substring(0, s.lastIndexOf(" "));
+
+                if (cmt.length() >= 500) {
+                    cmt = cmt.substring(0, Math.min(497, s.length()));
+                    cmt = cmt.substring(0, s.lastIndexOf(" "));
+                }
+
                 actions.add(new ProductInfo(
                         name,
                         getRatingImage(rating),
@@ -461,7 +484,7 @@ public class TechConversation {
         }
 
         boolQuery = boolQuery
-                .must(QueryBuilders.queryStringQuery(keyword.toString()))
+                .must(QueryBuilders.matchQuery("name", keyword.toString()))
                 .must(builder);
 
         LogCenter.info(LOG, boolQuery.toString());
@@ -664,7 +687,7 @@ public class TechConversation {
             boolQuery = boolQuery.must(QueryBuilders.termQuery("category", SAC_DIEN_THOAI));
         }
 
-        boolQuery = boolQuery.must(QueryBuilders.queryStringQuery(keyword.toString())).must(QueryBuilders.queryStringQuery(keyword.toString()));
+        boolQuery = boolQuery.must(QueryBuilders.simpleQueryStringQuery(keyword.toString()));
         LogCenter.info(LOG, boolQuery.toString());
         SearchResponse response = elasticDao.query(boolQuery, Config.INDEX, 100);
         Map<Map<String, Object>, Float> results = convertSearchResponse(response);

@@ -42,6 +42,7 @@ public class IntentDetector {
             "được đấy",
             "muốn mua sản phẩm",
             "thích sản phẩm này",
+            "mua"
     };
 
     private static final String KEYWORD_XIN_CHAO[] = new String[]{

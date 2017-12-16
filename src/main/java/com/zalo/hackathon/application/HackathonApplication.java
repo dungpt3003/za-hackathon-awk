@@ -1,5 +1,6 @@
 package com.zalo.hackathon.application;
 
+
 import com.zalo.hackathon.controller.HackathonController;
 
 import javax.ws.rs.core.Application;

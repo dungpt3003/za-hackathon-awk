@@ -8,6 +8,6 @@ public enum Intent {
     ASK_CHINH_SACH,
     ASK_RATING,
     ASK_COMMENT,
-
+    ASK_DETAIL,
     FIND_ITEM,
 }

@@ -26,6 +26,12 @@ public class IntentDetector {
             "có chiếc dày nào"
     };
 
+    private static final String KEYWORD_ASK_DETAIL[] = new String[]{
+            "chi tiết",
+            "cấu hình sản phẩm",
+            "cấu hình"
+    };
+
     public static Set<Intent> detect(String message) {
         Set<Intent> intents = new HashSet<>();
         for (Intent intent : Intent.values()) {
@@ -41,6 +47,9 @@ public class IntentDetector {
 
                 case FIND_ITEM:
                     check = checkIntent(KEYWORD_FIND_ITEMS, message);
+                    break;
+                case ASK_DETAIL:
+                    check = checkIntent(KEYWORD_ASK_DETAIL, message);
                     break;
             }
 

@@ -1,11 +1,10 @@
 package com.zalo.hackathon.controller;
 
-import com.google.gson.JsonObject;
 import com.vng.zalo.sdk.APIException;
 import com.vng.zalo.sdk.oa.ZaloOaClient;
 import com.vng.zalo.sdk.oa.ZaloOaInfo;
 import com.zalo.hackathon.Config;
-import com.zalo.hackathon.conversation.ShopConversation;
+import com.zalo.hackathon.conversation.TechConversation;
 import com.zalo.hackathon.utils.LogCenter;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
@@ -22,7 +21,8 @@ import java.util.Map;
 @Path("/")
 public class HackathonController {
     private static Logger LOG = LogManager.getLogger(HackathonController.class);
-    private static Map<Long, ShopConversation> currentConversations;
+    private static Map<Long, TechConversation> currentConversations;
+
     private ZaloOaClient oaClient;
 
     public HackathonController() {
@@ -37,10 +37,6 @@ public class HackathonController {
     @GET
     public String test() {
         return "Success";
-    }
-
-    public static void main(String args[]) throws APIException {
-        System.out.println(new HackathonController().processMessage(2540080485971043358L, "http://f9.photo.talk.zdn.vn/1003357158712287280/ef6f04ea668a89d4d09b.jpg"));
     }
 
     @GET
@@ -77,7 +73,7 @@ public class HackathonController {
         } else {
             try {
                 LogCenter.info(LOG, "Conversation of user " + fromuid + " is not existed, create new conversation");
-                ShopConversation conversation = new ShopConversation(msg.getFromuid(), oaClient);
+                TechConversation conversation = new TechConversation(msg.getFromuid(), oaClient);
                 currentConversations.put(msg.getFromuid(), conversation);
                 conversation.receiveMessage(msg);
             } catch (APIException e) {
@@ -90,13 +86,5 @@ public class HackathonController {
         }
 
         return new JSONObject().put("error", "false").toString();
-    }
-
-    private String processMessage(long userId, String message) throws APIException {
-        JsonObject profile = oaClient.getProfile(userId);
-
-        String userName = profile.getAsJsonObject("data").get("displayName").getAsString();
-        oaClient.sendTextMessage(userId, "Xin chào " + userName);
-        return "OK";
     }
 }

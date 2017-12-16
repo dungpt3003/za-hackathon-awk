@@ -20,7 +20,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
@@ -182,7 +181,7 @@ public class BaseElasticDao {
         }
     }
 
-    public SearchResponse query(BoolQueryBuilder builder, String index, int size) {
+    public SearchResponse query(QueryBuilder builder, String index, int size) {
         return client.prepareSearch(index)
                 .setQuery(builder)
                 .setSize(size)

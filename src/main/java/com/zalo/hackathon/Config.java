@@ -6,8 +6,8 @@ public class Config {
     public static final long OA_ID = 1415650639660905238L;
     public static final String SECRET_KEY = "n6ARcLqdGIJH97738QDX";
 
-    public static final String INDEX = "ut_it_shop";
-    public static final String TYPE = "clothing";
+    public static final String INDEX = "ut_it_tech";
+    public static final String TYPE = "tech_devices";
 
     public static final String ELASTIC_HOST = "localhost";
     public static final int ELASTIC_PORT = 9300;

@@ -1,13 +1,15 @@
 package com.zalo.hackathon.conversation;
 
-import java.util.HashSet;
-import java.util.Set;
+import com.zalo.hackathon.detector.Entity;
+import com.zalo.hackathon.detector.EntityDetector;
+import com.zalo.hackathon.detector.EntityType;
+
+import java.util.*;
 
 public class IntentDetector {
     private static final String KEYWORDS_ASK_PRICE[] = new String[]{
             "giá",
             "price",
-            "bao nhiêu",
             "giá rổ",
     };
 
@@ -29,10 +31,19 @@ public class IntentDetector {
     private static final String KEYWORD_ASK_DETAIL[] = new String[]{
             "chi tiết",
             "cấu hình sản phẩm",
-            "cấu hình"
+            "cấu hình",
+            "thông số"
     };
 
-    public static Set<Intent> detect(String message) {
+    private static final String KEYWORD_TU_VAN[] = new String[]{
+            "thích",
+            "hay đấy",
+            "được đấy",
+            "muốn mua sản phẩm",
+            "thích sản phẩm này",
+    };
+
+    public static Set<Intent> detect(String message, Map<EntityType, List<Entity>> entities) {
         Set<Intent> intents = new HashSet<>();
         for (Intent intent : Intent.values()) {
             boolean check = false;
@@ -50,6 +61,15 @@ public class IntentDetector {
                     break;
                 case ASK_DETAIL:
                     check = checkIntent(KEYWORD_ASK_DETAIL, message);
+                    break;
+                case BUY:
+                    check = checkIntent(KEYWORD_TU_VAN, message);
+                    break;
+
+                case ASK_FULL_TECH:
+                    if (entities.getOrDefault(EntityType.FULL_TECH_ITEM, new ArrayList<>()).size() > 0) {
+                        check = true;
+                    }
                     break;
             }
 
@@ -72,7 +92,8 @@ public class IntentDetector {
     }
 
     public static void main(String args[]) {
-        System.out.println(detect("mình muốn tìm áo len"));
+        String message = "ram của Iphone X là bao nhiêu ?";
+        System.out.println(detect(message, EntityDetector.getInstance().detect(message)));
     }
 
 }

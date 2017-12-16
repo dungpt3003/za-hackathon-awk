@@ -33,6 +33,39 @@ public class EntityDetector {
 
     private static Set<String> PHU_KIEN;
 
+    private static Set<String> OPERATION = new HashSet<>(Arrays.asList(
+            "android",
+            "android 7.0",
+            "android 5.0",
+            "android 6.0",
+            "ios",
+            "symbian",
+            "windows phone"
+    ));
+
+
+    private static Set<String> FULL_TECH_INFO = new HashSet<>(Arrays.asList(
+            "he dieu hanh",
+            "camera",
+            "bo nho trong",
+            "ram",
+            "bo nho ngoai",
+            "do phan giai",
+            "bluetooth",
+            "nfc",
+            "wifi",
+            "3g",
+            "4g",
+            "lte",
+            "nano sim",
+            "micro usb",
+            "flash",
+            "tien ich",
+            "dung luong pin",
+            "man hinh",
+            "ket noi",
+            "thong so ky thuat"
+    ));
 
     private EntityDetector() throws Exception {
         String json = FileUtils.readFileToString(new File("data/zdata/categories.json"));
@@ -60,7 +93,7 @@ public class EntityDetector {
     }
 
     public static void main(String args[]) {
-        System.out.println(EntityDetector.getInstance().detect("Mình muốn tìm sạc iphone"));
+        System.out.println(EntityDetector.getInstance().detect("Mình muốn tìm điện thoại iphone"));
 
     }
 
@@ -70,19 +103,43 @@ public class EntityDetector {
         for (EntityType type : EntityType.values()) {
             switch (type) {
                 case BRANDS:
-                    result.put(type, detectBrands(message));
+                    List<Entity> brands = detectBrands(message);
+                    if (brands.size() > 0) {
+                        result.put(type, brands);
+                    }
                     break;
                 case DIEN_THOAI:
-                    result.put(type, detectByKeywords(message, DIEN_THOAI, EntityType.DIEN_THOAI));
+                    List<Entity> mobile = detectByKeywords(message, DIEN_THOAI, EntityType.DIEN_THOAI);
+                    if (mobile.size() > 0) {
+                        result.put(type, mobile);
+                    }
                     break;
                 case TABLET:
-                    result.put(type, detectByKeywords(message, TABLET, EntityType.TABLET));
+                    List<Entity> tablet = detectByKeywords(message, TABLET, EntityType.TABLET);
+                    if (tablet.size() > 0) {
+                        result.put(type, tablet);
+                    }
+
                     break;
                 case ORDER:
-                    result.put(type, detectOrder(message));
+                    List<Entity> order = detectOrder(message);
+                    if (order.size() > 0) {
+                        result.put(type, detectOrder(message));
+                    }
+
                     break;
                 case PHU_KIEN:
-                    result.put(type, detectByKeywords(message, PHU_KIEN, EntityType.PHU_KIEN));
+                    List<Entity> phuKien = detectByKeywords(message, PHU_KIEN, EntityType.PHU_KIEN);
+                    if (phuKien.size() > 0) {
+                        result.put(type, phuKien);
+                    }
+                    break;
+                case FULL_TECH_ITEM:
+                    List<Entity> techInfos = detectByKeywords(message, FULL_TECH_INFO, EntityType.FULL_TECH_ITEM);
+                    if (techInfos.size() > 0) {
+                        result.put(type, techInfos);
+                    }
+
                     break;
             }
         }
@@ -95,7 +152,7 @@ public class EntityDetector {
         List<Entity> entities = new ArrayList<>();
         for (String keyword : keywords) {
             if (temp.contains(ZaStringUtils.normalize(keyword))) {
-                entities.add(new Entity(keyword, entityType));
+                entities.add(new Entity(keyword.toLowerCase(), entityType));
             }
         }
 

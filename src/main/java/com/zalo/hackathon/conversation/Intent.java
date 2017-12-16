@@ -10,4 +10,6 @@ public enum Intent {
     ASK_COMMENT,
     ASK_DETAIL,
     FIND_ITEM,
+    ASK_FULL_TECH,
+    BUY,
 }

@@ -16,5 +16,6 @@ public enum EntityType {
     phu_kien_khac,
     sac_dtdd,
     tai_nghe,
-    TABLET
+    TABLET,
+    FULL_TECH_ITEM
 }

@@ -25,13 +25,7 @@
   "dien thoai": [
     "mobile",
     "điện thoại",
-    "dien thoai",
-    "samsung",
-    "xiaomi",
-    "iphone",
-    "ốp lưng",
-    "op lung",
-    "ốp"
+    "iphone"
   ],
   "the nho dien thoai": [
     "thẻ nhớ",
@@ -39,8 +33,9 @@
     "sd card"
   ],
   "phu kien": [
-    "phu kien",
     "phụ kiện",
+    "ốp lưng",
+    "ốp",
     "cáp",
     "sạc",
     "thẻ nhớ",
@@ -56,7 +51,6 @@
   "may tinh bang": [
     "tablet",
     "máy tính bảng",
-    "may tinh bang",
     "ipad"
   ]
 }

@@ -37,7 +37,6 @@ public class IntentDetector {
     };
 
     private static final String KEYWORD_TU_VAN[] = new String[]{
-            "thích",
             "hay đấy",
             "được đấy",
             "muốn mua sản phẩm",
@@ -48,7 +47,6 @@ public class IntentDetector {
     private static final String KEYWORD_XIN_CHAO[] = new String[]{
             "hello",
             "xin chào",
-            "hi",
             "hey",
     };
 

@@ -618,8 +618,9 @@ public class TechConversation {
         productMessage.setData(REVIEW_DAY_DU_PREFIX + " " + productInfo.getId() + ": " + productInfo.getDesc());
 
         String title = "";
+        String price = productInfo.getPrice().replace("₫", "").replace(".", "");
         if (!StringUtils.isEmpty(productInfo.getPrice())) {
-            title = productInfo.getTitle() + " - " + ZaStringUtils.beautifulNumber(Integer.parseInt(productInfo.getPrice())) + "đ";
+            title = productInfo.getTitle() + " - " + ZaStringUtils.beautifulNumber(Integer.parseInt(price)) + "đ";
         } else {
             title = productInfo.getTitle();
         }

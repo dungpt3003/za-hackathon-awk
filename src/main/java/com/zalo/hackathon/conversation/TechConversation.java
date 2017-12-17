@@ -130,7 +130,10 @@ public class TechConversation {
         long userid = 6248692413216850869L;
         TechConversation conversation = new TechConversation(userid, client);
 
-        conversation.processRawMessage("Mình muốn tìm điện thoại dưới 10 triệu");
+        conversation.processOrder("{\n" +
+                " \"productId\":\"96607cbd5bf8b2a6ebe9\" \n" +
+                "}");
+//        conversation.processRawMessage("Mình muốn tìm điện thoại dưới 10 triệu");
 //        conversation.processRawMessage("Cho mình đánh giá con thứ 2");
 //        conversation.processRawMessage("Tôi muốn mua điện thoại samsung galaxy");
 
@@ -209,6 +212,7 @@ public class TechConversation {
         currentIndexProduct = 0;
         currentState = State.STATE_INIT;
     }
+
     public void processRawMessage(String message) throws APIException {
         LogCenter.info(LOG, "Process raw message: " + message);
         Map<EntityType, List<Entity>> entities = EntityDetector.getInstance().detect(message);
@@ -269,8 +273,11 @@ public class TechConversation {
             if (sentiment == 1)
                 oaClient.sendTextMessage(userId, POSITIVE_FEEDBACK);
 
-            if (sentiment == -1)
+            if (sentiment == -1) {
                 oaClient.sendTextMessage(userId, NEGATIVE_FEEDBACK);
+                oaClient.sendTextMessage(Config.DUNG_PT_UID, "User " + userId + " " + user.getDisplayName() + " was send a negative feedback: " + message);
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -630,8 +637,9 @@ public class TechConversation {
         productMessage.setThumb(productInfo.getImageUrl());
 
         String title = "";
+        String price = productInfo.getPrice().replace("₫", "").replace(".", "");
         if (!StringUtils.isEmpty(productInfo.getPrice())) {
-            title = productInfo.getTitle() + " - " + ZaStringUtils.beautifulNumber(Integer.parseInt(productInfo.getPrice())) + "đ";
+            title = productInfo.getTitle() + " - " + ZaStringUtils.beautifulNumber(Integer.parseInt(price)) + "đ";
         } else {
             title = productInfo.getTitle();
         }

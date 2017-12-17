@@ -130,7 +130,7 @@ public class TechConversation {
         long userid = 6248692413216850869L;
         TechConversation conversation = new TechConversation(userid, client);
 
-//        conversation.processRawMessage("Mình muốn tìm điện thoại từ 1 triệu đến 10 triệu");
+        conversation.processRawMessage("Mình muốn tìm điện thoại dưới 10 triệu");
 //        conversation.processRawMessage("Cho mình đánh giá con thứ 2");
 //        conversation.processRawMessage("Tôi muốn mua điện thoại samsung galaxy");
 
@@ -512,7 +512,7 @@ public class TechConversation {
         }
 
         boolQuery = boolQuery
-                .must(QueryBuilders.matchQuery("name", keyword.toString()))
+                .must(QueryBuilders.simpleQueryStringQuery(keyword.toString()))
                 .must(builder);
 
         LogCenter.info(LOG, boolQuery.toString());
@@ -612,7 +612,7 @@ public class TechConversation {
 
         String title = "";
         if (!StringUtils.isEmpty(productInfo.getPrice())) {
-            title = productInfo.getTitle() + " - " + productInfo.getPrice() + "đ";
+            title = productInfo.getTitle() + " - " + ZaStringUtils.beautifulNumber(Integer.parseInt(productInfo.getPrice())) + "đ";
         } else {
             title = productInfo.getTitle();
         }
@@ -631,7 +631,7 @@ public class TechConversation {
 
         String title = "";
         if (!StringUtils.isEmpty(productInfo.getPrice())) {
-            title = productInfo.getTitle() + " - " + productInfo.getPrice() + "đ";
+            title = productInfo.getTitle() + " - " + ZaStringUtils.beautifulNumber(Integer.parseInt(productInfo.getPrice())) + "đ";
         } else {
             title = productInfo.getTitle();
         }
@@ -728,7 +728,7 @@ public class TechConversation {
             String productUrl = result.get("productDetailLink").toString();
             String imgUrl = result.get("imgUrl").toString();
             String title = result.get("name").toString();
-            String desc = result.get("price").toString();
+            String desc = result.get("desc").toString().substring(0, 97);
             String price = result.get("price").toString();
             cachedProducts.add(new ProductInfo(id, productUrl, imgUrl, title, desc, price));
         }
